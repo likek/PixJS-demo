@@ -1,0 +1,97 @@
+
+duck.png
+size: 443,197
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+duck_bang1
+  rotate: true
+  xy: 324, 73
+  size: 40, 49
+  orig: 40, 49
+  offset: 0, 0
+  index: -1
+duck_bang2
+  rotate: true
+  xy: 324, 29
+  size: 42, 46
+  orig: 42, 46
+  offset: 0, 0
+  index: -1
+duck_body
+  rotate: true
+  xy: 324, 115
+  size: 80, 84
+  orig: 80, 84
+  offset: 0, 0
+  index: -1
+duck_eye_r
+  rotate: false
+  xy: 409, 41
+  size: 31, 42
+  orig: 31, 42
+  offset: 0, 0
+  index: -1
+duck_foot_l
+  rotate: true
+  xy: 324, 12
+  size: 15, 40
+  orig: 15, 40
+  offset: 0, 0
+  index: -1
+duck_foot_r
+  rotate: true
+  xy: 324, 12
+  size: 15, 40
+  orig: 15, 40
+  offset: 0, 0
+  index: -1
+duck_head
+  rotate: true
+  xy: 2, 10
+  size: 185, 161
+  orig: 185, 161
+  offset: 0, 0
+  index: -1
+duck_head_down
+  rotate: true
+  xy: 165, 13
+  size: 182, 157
+  orig: 182, 157
+  offset: 0, 0
+  index: -1
+duck_mouth
+  rotate: true
+  xy: 410, 135
+  size: 60, 31
+  orig: 60, 31
+  offset: 0, 0
+  index: -1
+duck_tail1
+  rotate: true
+  xy: 372, 21
+  size: 42, 34
+  orig: 42, 34
+  offset: 0, 0
+  index: -1
+duck_tail2
+  rotate: true
+  xy: 408, 2
+  size: 37, 13
+  orig: 37, 13
+  offset: 0, 0
+  index: -1
+duck_wing
+  rotate: false
+  xy: 375, 65
+  size: 32, 48
+  orig: 32, 48
+  offset: 0, 0
+  index: -1
+duck_wing_r
+  rotate: false
+  xy: 410, 85
+  size: 31, 48
+  orig: 31, 48
+  offset: 0, 0
+  index: -1

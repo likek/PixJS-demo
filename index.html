@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="./pixi.min.js"></script>
+    <script src="../pixi-plugins/pixi-layers.js"></script>
+    <script src="../pixi-plugins/pixi-lights.js"></script>
+    <script src="../pixi-plugins/pixi-spine.js"></script>
+    <title>pixjsTest</title>
+    <style>
+    html,body{
+        padding: 0;
+        margin: 0;
+    }
+    </style>
+</head>
+
+<body style="position:absolute;top:0;left:0;right:0;bottom:0;">
+    <audio id="colliderAudio" src="./resources/commit.mp3"></audio>
+    <div id="log"></div>
+    <script>
+        //创建画布
+        var WIDTH = document.body.offsetWidth, HEIGHT = document.body.offsetHeight;
+        var app = new PIXI.Application(WIDTH, HEIGHT);
+        document.body.appendChild(app.view);
+        //舞台和灯光
+        var stage = app.stage = new PIXI.display.Stage();
+        var light = new PIXI.lights.PointLight(0xffffff, 3);
+        //加入灯光的三个“层”
+        stage.addChild(new PIXI.display.Layer(PIXI.lights.diffuseGroup));
+        stage.addChild(new PIXI.display.Layer(PIXI.lights.normalGroup));
+        stage.addChild(new PIXI.display.Layer(PIXI.lights.lightGroup));
+        //资源文件夹设置
+        PIXI.loader.baseUrl = './resources';
+        PIXI.loader
+            // .add('bg_diffuse', 'BGTextureTest.jpg')
+            .add('bg_diffuse', 'BGTextureNORM.jpg')
+            .add('bg_normal', 'BGTextureNORM.jpg')
+            .add('block_diffuse', 'block.png')
+            // .add('block_diffuse', 'blockNormalMap.png')
+            .add('block_normal', 'blockNormalMap.png')
+            .add('duck', '/spine/duck.json')
+            .add('lamp', '/spine/lamp.json')
+            .add('treasure', 'treasure.png')
+            .load(onAssetsLoaded);
+
+        //音频
+        let audio1 = document.querySelector("#colliderAudio");
+        function onAssetsLoaded(loader, res) {
+            //创建和设置容器
+            let blockContainer = new PIXI.Container();
+            let duckCage = new PIXI.Container();
+            duckCage.position.set((app.screen.width - duckCage.width) * 0.5, app.screen.height * 0.8);
+            duckCage.addChild(light);
+            duckCage.scale.set(0.3);
+            let uiContainer = new PIXI.Container();
+            let treasureContainer = new PIXI.Container();
+            // app.renderer.plugins.interaction.cursorStyles.default = "url()";
+            //搭建场景内的方块、背景
+            var bg = createPair(res.bg_diffuse.texture, res.bg_normal.texture, PIXI.extras.TilingSprite);
+
+            for(let i = 0, count = 3;i<count;i++){
+                let block = createPair(res.block_diffuse.texture, res.block_normal.texture);
+                block.position.set(app.screen.width/count * (i+0.5), Math.random() * app.screen.height);
+                block.interactive = true;
+                block.on('pointerdown', onDragStart)
+                    .on('pointerup', onDragEnd)
+                    .on('pointerupoutside', onDragEnd)
+                    .on('pointermove', onDragMove);
+                blockContainer.addChild(block);
+            }
+
+            stage.addChild(new PIXI.lights.AmbientLight(null, 0.4));
+            stage.addChild(new PIXI.lights.DirectionalLight(null, 1, blockContainer.children[0]));
+            //鸭子
+            let duck = new PIXI.spine.Spine(res.duck.spineData);
+            duck.interactive = true;
+            duck.on('pointerdown', onDragStart)
+                .on('pointerup', onDragEnd)
+                .on('pointerupoutside', onDragEnd)
+                .on('pointermove', onDragMove);
+            duckCage.addChild(duck);
+            duck.state.setAnimation(0, 'walk', true);
+            duck.__duckVXD = Math.random() < 0.5 ? 1 : -1;
+            duck.__duckVYD = Math.random() < 0.5 ? 1 : -1;
+            duck.__duckVXV = 1;
+            duck.__duckVYV = 1;
+            duck.scale.set(duck.__duckVXD,1);
+            //蜡烛
+            let lamp = new PIXI.spine.Spine(res.lamp.spineData);
+            duckCage.addChild(lamp);
+            lamp.state.setAnimation(0,"animation",true);
+            lamp.scale.set(-duck.__duckVXD,1);
+
+            //背景添加着色器
+            var shaderFrag = `
+                precision mediump float;
+
+                uniform vec2 mouse;
+                uniform vec2 resolution;
+                uniform float time;
+
+                void main() {
+                    vec2 pixelPos = vec2(gl_FragCoord.x, resolution.y - gl_FragCoord.y);
+                    gl_FragColor = vec4( sin(time), mouse.x/resolution.x, mouse.y/resolution.y, 1) * 0.5; 
+                }
+                `;
+            let filter = new PIXI.Filter(null, shaderFrag);
+            bg.filterArea = app.screen;
+            bg.filters = [filter];
+
+            //按钮
+            let btnShader = `
+              void main(){
+                gl_FragColor = vec4(0.8, 1, 0.9, 1);
+              }
+            `;
+            let shaderFlag = true;
+            btnFilter = new PIXI.Filter(null,btnShader);
+            let button = new PIXI.Sprite(res.block_diffuse.texture);
+            uiContainer.addChild(button);
+            button.interactive = true;
+            button.position.set(20,40);
+            button.width = 80;button.height = 20;
+            button.filterArea = new PIXI.Rectangle(button.position.x,button.position.y,button.width,button.height);
+            button.filters = [btnFilter];
+
+            let text = new PIXI.Text(shaderFlag? "关闭shader": "开启shader", {fontFamily : 'Arial', fontSize: 12, fill : 0x1010ff, align : 'center'});
+            uiContainer.addChild(text);
+            text.width = button.width;
+            text.height = button.height;
+            text.position.set(button.position.x, button.position.y);
+
+            button.on("pointerdown",()=>{
+                shaderFlag = !shaderFlag;
+                text.text = shaderFlag? "关闭shader": "开启shader"; 
+            });
+
+            stage.addChild(bg);
+            stage.addChild(blockContainer);
+            stage.addChild(duckCage);
+            stage.addChild(uiContainer);
+            stage.addChild(treasureContainer);
+
+            //创建宝箱
+            for(let i = 0, itemWidth = 50;i<Math.floor(app.screen.width/itemWidth) - 1;i++){
+                let treasure = createPair(res.treasure.texture, res.treasure.texture);
+                treasure.position.set(itemWidth + i * itemWidth, Math.random()*app.screen.height);
+                treasureContainer.addChild(treasure);
+            }
+            let totaltreasure = treasureContainer.children.length;
+
+            //分数显示
+            let scoreNum = 0;
+            let score = new PIXI.Text("已开采宝箱数量: " + scoreNum  + ", 剩余宝箱数量: " + (totaltreasure - scoreNum), {fontFamily : 'Arial', fontSize: 16, fill : 0xffffff, align : 'center'});
+            uiContainer.addChild(score);
+            score.position.set(button.x, button.y + button.height + 20);
+            //update
+            app.ticker.add(() => {
+                //边缘反弹
+                let duckPos = duck.getGlobalPosition();
+                if(duckPos.x >= app.screen.width- duck.width/2 || duckPos.x <= -duck.width/2){
+                    duck.__duckVXD *= -1;
+                    duck.scale.set(duck.__duckVXD,1);
+                    lamp.scale.set(-duck.__duckVXD,1);
+                }
+                if(duckPos.y >= app.screen.height || duckPos.y <= duck.height*0.3){
+                    duck.__duckVYD *= -1;
+                }
+                //走动
+                duck.position.x += duck.__duckVXD*duck.__duckVXV;
+                duck.position.y += duck.__duckVYD*duck.__duckVYV;
+
+                //灯光跟随
+                lamp.position.x = duck.position.x + duck.width/3;
+                lamp.position.y = duck.position.y - duck.height/4;
+                light.position.x = lamp.position.x;
+                light.position.y = lamp.position.y - lamp.height/1.6;
+                //包箱开采
+                for(let i=0;i<treasureContainer.children.length;i++){
+                    let treasure = treasureContainer.children[i];
+                    let treasurePos = treasure.getGlobalPosition();
+                    if(hitTestRectangle({x:duckPos.x - Math.abs(duck.width)*0.3/2, y:duckPos.y - duck.height*0.3, width:Math.abs(duck.width)*0.3, height:duck.height*0.3},{x:treasurePos.x, y:treasurePos.y, width:treasure.width, height: treasure.height})){
+                        treasure.destroy();
+                        score.text = "已开采宝箱数量: " + (++scoreNum) + ", 剩余宝箱数量: " + (totaltreasure - scoreNum);
+                        audio1.play();
+                    }
+                }
+                //bg的shader属性设置
+                if(shaderFlag){
+                    if(filter.uniforms.time > 3.14){
+                        filter.uniforms.time = 0;
+                    }else{
+                        filter.uniforms.time += 0.01;
+                    }
+                    let v2 = filter.uniforms.mouse;
+                    // var global = app.renderer.plugins.interaction.mouse.global;
+                    let global = duck.getGlobalPosition();
+                    v2[0] = global.x; v2[1] = global.y;
+                    filter.uniforms.mouse = v2;
+
+                    v2 = filter.uniforms.resolution;
+                    v2[0] = app.screen.width;
+                    v2[1] = app.screen.height;
+                    filter.uniforms.resolution = v2;
+                }else{
+                    filter.uniforms.time = 0;
+                    filter.uniforms.mouse = [0,0];
+                }
+            });
+        }
+
+        function createPair(diffuseTex, normalTex, type) {
+            var container = new PIXI.Container();
+            var diffuseSprite = new (type||PIXI.Sprite)(diffuseTex, app.screen.width,app.screen.height);
+            diffuseSprite.parentGroup = PIXI.lights.diffuseGroup;
+            var normalSprite = new (type||PIXI.Sprite)(normalTex, app.screen.width,app.screen.height);
+            normalSprite.parentGroup = PIXI.lights.normalGroup;
+            container.addChild(diffuseSprite);
+            container.addChild(normalSprite);
+            return container;
+        }
+
+        //拖拽事件
+        function onDragStart(event) {
+            console.log(event);
+            this.data = event.data;
+            this.alpha = 0.5;
+            this.dragging = true;
+            this.target = event.target;
+            if(this.target instanceof PIXI.spine.Spine){
+                this.target.__duckVXV = this.target.__duckVYV = 0;
+                this.target.state.setAnimation(0,"stand",true);
+            }
+        }
+
+        function onDragEnd(event) {
+            this.alpha = 1;
+            this.dragging = false;
+            this.data = null;
+            if(this.target instanceof PIXI.spine.Spine){
+                this.target.__duckVXV = this.target.__duckVYV = 1;
+                this.target.state.setAnimation(0,"walk",true);
+            }
+        }
+
+        function onDragMove() {
+            if (this.dragging) {
+                var newPosition = this.data.getLocalPosition(this.parent);
+                if(this.target instanceof PIXI.spine.Spine){
+                    this.x = newPosition.x;
+                    this.y = newPosition.y + this.target.height/2;
+                }else{
+                    this.x = newPosition.x - this.target.width/2;
+                    this.y = newPosition.y  - this.target.height/2;
+                }
+            }
+        }
+
+        //圆形碰撞检测
+        function hitTestRectangle(r1, r2) {
+            let hit, combinedHalfWidths, combinedHalfHeights, vx, vy;
+
+            hit = false;
+
+            r1.centerX = r1.x + r1.width / 2;
+            r1.centerY = r1.y + r1.height / 2;
+            r2.centerX = r2.x + r2.width / 2;
+            r2.centerY = r2.y + r2.height / 2;
+
+            r1.halfWidth = r1.width / 2;
+            r1.halfHeight = r1.height / 2;
+            r2.halfWidth = r2.width / 2;
+            r2.halfHeight = r2.height / 2;
+
+            vx = r1.centerX - r2.centerX;
+            vy = r1.centerY - r2.centerY;
+
+            combinedHalfWidths = r1.halfWidth + r2.halfWidth;
+            combinedHalfHeights = r1.halfHeight + r2.halfHeight;
+
+            if (Math.abs(vx) < combinedHalfWidths) {
+                if (Math.abs(vy) < combinedHalfHeights) {
+                    hit = true;
+                } else {
+                    hit = false;
+                }
+            } else {
+                hit = false;
+            }
+            return hit;
+        };
+    </script>
+</body>
+
+</html>
