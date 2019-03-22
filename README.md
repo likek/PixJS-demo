@@ -78,7 +78,7 @@ PixiJS是一款以WebGL和canvas等作为技术支撑使用javascript开发的HT
 | 灯光系统                           | 未实现                              | :smile:支持              |
 | 自定义着色器、加载外部着色器文件   | 未实现                              | :smile:支持              |
 | 碰撞检测、碰撞器分组、不规则碰撞器 | :smile:支持                         | 需自行实现               |
-| 可视化UI编辑器                     | :smile:有                           | 不支持                   |
+| 可视化UI编辑器                     | :smile:有                           | 无                       |
 | 物理系统                           | :smile:支持​                         | 未实现                   |
 | 补间动画系统                       | :smile:支持​                         | 未实现                   |
 | 加载和播放龙骨                     | 支持spine和dragonBones              | 支持spine                |
