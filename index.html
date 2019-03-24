@@ -22,6 +22,7 @@
     <audio id="colliderAudio" src="./resources/commit.mp3"></audio>
     <div id="log"></div>
     <script>
+        let shaderEnabled = !window.navigator.userAgent.toLowerCase().match(/iphone|ipad|android/g);
         //创建画布
         var WIDTH = document.body.offsetWidth, HEIGHT = document.body.offsetHeight;
         var app = new PIXI.Application(WIDTH, HEIGHT);
@@ -95,50 +96,6 @@
             lamp.state.setAnimation(0,"animation",true);
             lamp.scale.set(-duck.__duckVXD,1);
 
-            //背景添加着色器
-            var shaderFrag = `
-                precision mediump float;
-
-                uniform vec2 mouse;
-                uniform vec2 resolution;
-                uniform float time;
-
-                void main() {
-                    vec2 pixelPos = vec2(gl_FragCoord.x, resolution.y - gl_FragCoord.y);
-                    gl_FragColor = vec4( sin(time), mouse.x/resolution.x, mouse.y/resolution.y, 1) * 0.5; 
-                }
-                `;
-            let filter = new PIXI.Filter(null, shaderFrag);
-            bg.filterArea = app.screen;
-            bg.filters = [filter];
-
-            //按钮
-            let btnShader = `
-              void main(){
-                gl_FragColor = vec4(0.8, 1, 0.9, 1);
-              }
-            `;
-            let shaderFlag = true;
-            btnFilter = new PIXI.Filter(null,btnShader);
-            let button = new PIXI.Sprite(res.block_diffuse.texture);
-            uiContainer.addChild(button);
-            button.interactive = true;
-            button.position.set(20,40);
-            button.width = 80;button.height = 20;
-            button.filterArea = new PIXI.Rectangle(button.position.x,button.position.y,button.width,button.height);
-            button.filters = [btnFilter];
-
-            let text = new PIXI.Text(shaderFlag? "关闭shader": "开启shader", {fontFamily : 'Arial', fontSize: 12, fill : 0x1010ff, align : 'center'});
-            uiContainer.addChild(text);
-            text.width = button.width;
-            text.height = button.height;
-            text.position.set(button.position.x, button.position.y);
-
-            button.on("pointerdown",()=>{
-                shaderFlag = !shaderFlag;
-                text.text = shaderFlag? "关闭shader": "开启shader"; 
-            });
-
             stage.addChild(bg);
             stage.addChild(blockContainer);
             stage.addChild(duckCage);
@@ -157,7 +114,55 @@
             let scoreNum = 0;
             let score = new PIXI.Text("已开采宝箱数量: " + scoreNum  + ", 剩余宝箱数量: " + (totaltreasure - scoreNum), {fontFamily : 'Arial', fontSize: 16, fill : 0xffffff, align : 'center'});
             uiContainer.addChild(score);
-            score.position.set(button.x, button.y + button.height + 20);
+            score.position.set(20, 5);
+            
+            //着色器设置
+            let filter;
+            let shaderFlag = 1;
+            if(shaderEnabled){
+                 //背景添加着色器
+                var shaderFrag = `
+                precision mediump float;
+
+                uniform vec2 mouse;
+                uniform vec2 resolution;
+                uniform float time;
+
+                void main() {
+                    vec2 pixelPos = vec2(gl_FragCoord.x, resolution.y - gl_FragCoord.y);
+                    gl_FragColor = vec4( sin(time), mouse.x/resolution.x, mouse.y/resolution.y, 1) * 0.5; 
+                }
+                `;
+                filter = new PIXI.Filter(null, shaderFrag);
+                bg.filterArea = app.screen;
+                bg.filters = [filter];
+                //按钮
+                let button = new PIXI.Sprite(res.block_diffuse.texture);
+                uiContainer.addChild(button);
+                button.interactive = true;
+                button.position.set(20,40);
+                button.width = 80;button.height = 20;
+                
+                let text = new PIXI.Text(shaderFlag? "关闭shader": "开启shader", {fontFamily : 'Arial', fontSize: 12, fill : 0x1010ff, align : 'center'});
+                uiContainer.addChild(text);
+                text.width = button.width;
+                text.height = button.height;
+                text.position.set(button.position.x, button.position.y);
+
+                button.on("pointerdown",()=>{
+                    shaderFlag = !shaderFlag;
+                    text.text = shaderFlag? "关闭shader": "开启shader"; 
+                });
+                //按钮添加着色器
+                let btnShader = `
+                    void main(){
+                         gl_FragColor = vec4(0.8, 1, 0.9, 1);
+                     }
+                 `;
+                btnFilter = new PIXI.Filter(null,btnShader);
+                button.filterArea = new PIXI.Rectangle(button.position.x,button.position.y,button.width,button.height);
+                button.filters = [btnFilter];
+            }
             //update
             app.ticker.add(() => {
                 //边缘反弹
@@ -190,25 +195,27 @@
                     }
                 }
                 //bg的shader属性设置
-                if(shaderFlag){
-                    if(filter.uniforms.time > 3.14){
-                        filter.uniforms.time = 0;
-                    }else{
-                        filter.uniforms.time += 0.01;
-                    }
-                    let v2 = filter.uniforms.mouse;
-                    // var global = app.renderer.plugins.interaction.mouse.global;
-                    let global = duck.getGlobalPosition();
-                    v2[0] = global.x; v2[1] = global.y;
-                    filter.uniforms.mouse = v2;
+                if(shaderEnabled){
+                    if(shaderFlag){
+                        if(filter.uniforms.time > 3.14){
+                            filter.uniforms.time = 0;
+                        }else{
+                            filter.uniforms.time += 0.01;
+                        }
+                        let v2 = filter.uniforms.mouse;
+                        // var global = app.renderer.plugins.interaction.mouse.global;
+                        let global = duck.getGlobalPosition();
+                        v2[0] = global.x; v2[1] = global.y;
+                        filter.uniforms.mouse = v2;
 
-                    v2 = filter.uniforms.resolution;
-                    v2[0] = app.screen.width;
-                    v2[1] = app.screen.height;
-                    filter.uniforms.resolution = v2;
-                }else{
-                    filter.uniforms.time = 0;
-                    filter.uniforms.mouse = [0,0];
+                        v2 = filter.uniforms.resolution;
+                        v2[0] = app.screen.width;
+                        v2[1] = app.screen.height;
+                        filter.uniforms.resolution = v2;
+                    }else{
+                        filter.uniforms.time = 0;
+                        filter.uniforms.mouse = [0,0];
+                    }
                 }
             });
         }
